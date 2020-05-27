@@ -8,7 +8,7 @@ from vnpy.trader.ui import MainWindow, create_qapp
 # from vnpy.gateway.bitmex import BitmexGateway
 # from vnpy.gateway.futu import FutuGateway
 # from vnpy.gateway.ib import IbGateway
-# from vnpy.gateway.ctp import CtpGateway
+from vnpy.gateway.ctp import CtpGateway
 # from vnpy.gateway.ctptest import CtptestGateway
 # from vnpy.gateway.mini import MiniGateway
 # from vnpy.gateway.sopt import SoptGateway
@@ -63,13 +63,13 @@ def main():
     main_engine = MainEngine(event_engine)
 
     # main_engine.add_gateway(BinanceGateway)
-    # main_engine.add_gateway(CtpGateway)
+    main_engine.add_gateway(CtpGateway)
     # main_engine.add_gateway(CtptestGateway)
     # main_engine.add_gateway(MiniGateway)
     # main_engine.add_gateway(SoptGateway)
     # main_engine.add_gateway(MinitestGateway)
     # main_engine.add_gateway(FemasGateway)
-    main_engine.add_gateway(UftGateway)
+    # main_engine.add_gateway(UftGateway)
     # main_engine.add_gateway(IbGateway)
     # main_engine.add_gateway(FutuGateway)
     # main_engine.add_gateway(BitmexGateway)
@@ -81,8 +81,8 @@ def main():
     # main_engine.add_gateway(OnetokenGateway)
     # main_engine.add_gateway(OkexfGateway)
     # main_engine.add_gateway(HuobifGateway)
-    main_engine.add_gateway(XtpGateway)
-    main_engine.add_gateway(TapGateway)
+    # main_engine.add_gateway(XtpGateway)
+    # main_engine.add_gateway(TapGateway)
     # main_engine.add_gateway(ToraGateway)
     # main_engine.add_gateway(AlpacaGateway)
     # main_engine.add_gateway(OkexsGateway)
