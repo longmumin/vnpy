@@ -5,6 +5,10 @@ from vnpy.app.algo_trading import AlgoTemplate
 import math
 
 
+'''
+此算法没完结，没传入开平标志位
+'''
+
 class GridAlgo(AlgoTemplate):
     """"""
 

@@ -479,6 +479,7 @@ class RohonTdApi(TdApi):
 
     def onRspQryInvestorPosition(self, data: dict, error: dict, reqid: int, last: bool):
         """"""
+        print(data)
         if not data:
             return
 
@@ -530,7 +531,10 @@ class RohonTdApi(TdApi):
             self.positions.clear()
 
     def onRspQryTradingAccount(self, data: dict, error: dict, reqid: int, last: bool):
-        """"""
+        '''
+        在不发送报单的情况下，不返回账户信息
+        '''
+        print(data)
         if "AccountID" not in data:
             return
 
