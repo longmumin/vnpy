@@ -108,13 +108,21 @@ class AlgoTemplate:
         """"""
         self.algo_engine.subscribe(self, vt_symbol)
 
+    '''
+    ############################################################
+    作者：张峻铭
+    新增：这里的写法和CTA template里面的写法不一样，这里面没有考虑平仓
+    1、加入卖开，买平
+    2、注释 buy 买开， sell 卖平， short 卖开， cover买平
+    ############################################################
+    '''
     def buy(
         self,
         vt_symbol,
         price,
         volume,
         order_type: OrderType = OrderType.LIMIT,
-        offset: Offset = Offset.NONE
+        offset: Offset = Offset.OPEN
     ):
         """"""
         msg = f"委托买入{vt_symbol}：{volume}@{price}"
@@ -136,7 +144,7 @@ class AlgoTemplate:
         price,
         volume,
         order_type: OrderType = OrderType.LIMIT,
-        offset: Offset = Offset.NONE
+        offset: Offset = Offset.CLOSE
     ):
         """"""
         msg = f"委托卖出{vt_symbol}：{volume}@{price}"
@@ -146,6 +154,50 @@ class AlgoTemplate:
             self,
             vt_symbol,
             Direction.SHORT,
+            price,
+            volume,
+            order_type,
+            offset
+        )
+
+    def short(
+        self,
+        vt_symbol,
+        price,
+        volume,
+        order_type: OrderType = OrderType.LIMIT,
+        offset: Offset = Offset.OPEN
+    ):
+        """"""
+        msg = f"委托卖出{vt_symbol}：{volume}@{price}"
+        self.write_log(msg)
+
+        return self.algo_engine.send_order(
+            self,
+            vt_symbol,
+            Direction.SHORT,
+            price,
+            volume,
+            order_type,
+            offset
+        )
+
+    def cover(
+        self,
+        vt_symbol,
+        price,
+        volume,
+        order_type: OrderType = OrderType.LIMIT,
+        offset: Offset = Offset.CLOSE
+    ):
+        """"""
+        msg = f"委托卖出{vt_symbol}：{volume}@{price}"
+        self.write_log(msg)
+
+        return self.algo_engine.send_order(
+            self,
+            vt_symbol,
+            Direction.LONG,
             price,
             volume,
             order_type,

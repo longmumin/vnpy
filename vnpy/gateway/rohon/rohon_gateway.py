@@ -479,7 +479,7 @@ class RohonTdApi(TdApi):
 
     def onRspQryInvestorPosition(self, data: dict, error: dict, reqid: int, last: bool):
         """"""
-        print(data)
+        # print(data)
         if not data:
             return
 
@@ -534,7 +534,7 @@ class RohonTdApi(TdApi):
         '''
         在不发送报单的情况下，不返回账户信息
         '''
-        print(data)
+        # print(data)
         if "AccountID" not in data:
             return
 

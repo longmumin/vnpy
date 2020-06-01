@@ -86,6 +86,16 @@ class GridAlgo(AlgoTemplate):
             target_sell_distance) * self.step_volume
         target_sell_volume = self.pos - target_sell_position
 
+        '''
+        ############################################################
+        作者：张峻铭
+        新增：原生代码没有考虑开平仓问题，这里需要修改
+        1、先将sell变为short
+        未来需要修改：
+        1、不能指定限价，会出现价差滑点
+        2、不能实现开平仓
+        ############################################################
+        '''
         # Buy when price dropping
         if target_buy_volume > 0:
             self.vt_orderid = self.buy(
@@ -95,7 +105,7 @@ class GridAlgo(AlgoTemplate):
             )
         # Sell when price rising
         elif target_sell_volume > 0:
-            self.vt_orderid = self.sell(
+            self.vt_orderid = self.short(
                 self.vt_symbol,
                 self.last_tick.bid_price_1,
                 min(target_sell_volume, self.last_tick.bid_volume_1)
