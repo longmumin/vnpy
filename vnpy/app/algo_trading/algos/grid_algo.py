@@ -6,7 +6,12 @@ import math
 
 
 '''
-此算法没完结，没传入开平标志位
+############################################################
+作者：张峻铭
+新增：需要引入数据库机制，存储实时变化的pos，存储对应标的的设置，持仓等信息
+1、引入数据库
+2、引入持仓参数
+############################################################
 '''
 
 class GridAlgo(AlgoTemplate):
@@ -47,7 +52,7 @@ class GridAlgo(AlgoTemplate):
         # Variables
         self.timer_count = 0
         self.vt_orderid = ""
-        self.pos = 0
+        self.pos = self.get_position(self.vt_symbol)
         self.last_tick = None
 
         self.subscribe(self.vt_symbol)
@@ -97,6 +102,8 @@ class GridAlgo(AlgoTemplate):
         ############################################################
         '''
         # Buy when price dropping
+        # 首先判断目前仓位
+        print(self.pos)
         if target_buy_volume > 0:
             self.vt_orderid = self.buy(
                 self.vt_symbol,

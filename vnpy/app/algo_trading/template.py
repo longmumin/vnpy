@@ -224,6 +224,10 @@ class AlgoTemplate:
         """"""
         return self.algo_engine.get_contract(self, vt_symbol)
 
+    def get_position(self, vt_symbol: str):
+        """"""
+        return self.algo_engine.get_position(self, vt_symbol)
+
     def write_log(self, msg: str):
         """"""
         self.algo_engine.write_log(msg, self)
