@@ -119,6 +119,7 @@ symbol_exchange_map = {}
 symbol_name_map = {}
 symbol_size_map = {}
 
+f = open("out.txt", "w")
 
 class RohonGateway(BaseGateway):
     """
@@ -162,7 +163,7 @@ class RohonGateway(BaseGateway):
             md_address = "tcp://" + md_address
 
         self.td_api.connect(td_address, userid, password, brokerid, auth_code, appid, product_info)
-        self.md_api.connect(md_address, userid, password, brokerid)
+        # self.md_api.connect(md_address, userid, password, brokerid)
 
         self.init_query()
 
@@ -534,7 +535,6 @@ class RohonTdApi(TdApi):
         '''
         在不发送报单的情况下，不返回账户信息
         '''
-        # print(data)
         if "AccountID" not in data:
             return
 
@@ -580,12 +580,24 @@ class RohonTdApi(TdApi):
         if last:
             self.gateway.write_log("合约信息查询成功")
 
+            '''
+            ########################################################################
+            作者：张峻铭
+            修改：原代码用for data in self.order_data 循环，因为数据类型的原因，会进入死循环
+            这里改为 for i in range()
+            源代码：
             for data in self.order_data:
+                print(data, file=f)
                 self.onRtnOrder(data)
             self.order_data.clear()
+            ########################################################################
+            '''
+            for i in range(0, len(self.order_data)):
+                self.onRtnOrder(self.order_data[i])
+            self.order_data.clear()
 
-            for data in self.trade_data:
-                self.onRtnTrade(data)
+            for i in range(0, len(self.trade_data)):
+                self.onRtnTrade(self.trade_data[i])
             self.trade_data.clear()
 
     def onRtnOrder(self, data: dict):
