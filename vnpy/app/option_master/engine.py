@@ -194,6 +194,16 @@ class OptionEngine(BaseEngine):
 
     def process_contract_event(self, event: Event) -> None:
         """"""
+        '''
+        ####################################################################
+        作者：张峻铭
+        新增：这里通过Ronhon接口，无法获得option_portfolio字段，导致无法添加
+        期权合约，需要修改
+        1、这里的portfolio_name字段对于后续处理较为重要，所以还是要想办法按规则生成
+        2、
+        ####################################################################
+        '''
+
         contract: ContractData = event.data
 
         if contract.product == Product.OPTION:
