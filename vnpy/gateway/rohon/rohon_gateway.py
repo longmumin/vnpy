@@ -163,7 +163,7 @@ class RohonGateway(BaseGateway):
             md_address = "tcp://" + md_address
 
         self.td_api.connect(td_address, userid, password, brokerid, auth_code, appid, product_info)
-        # self.md_api.connect(md_address, userid, password, brokerid)
+        self.md_api.connect(md_address, userid, password, brokerid)
 
         self.init_query()
 

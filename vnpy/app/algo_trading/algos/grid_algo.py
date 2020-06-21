@@ -1,7 +1,7 @@
-from vnpy.trader.constant import Direction
 from vnpy.trader.object import TradeData, OrderData, TickData
 from vnpy.trader.engine import BaseEngine
 from vnpy.app.algo_trading import AlgoTemplate
+from vnpy.trader.constant import Status, Direction
 import math
 
 
@@ -32,6 +32,8 @@ class GridAlgo(AlgoTemplate):
         "timer_count",
         "vt_orderid"
     ]
+
+    STATUS_FINISHED = set([Status.REJECTED, Status.CANCELLED, Status.ALLTRADED])
 
     def __init__(
         self,
@@ -90,8 +92,13 @@ class GridAlgo(AlgoTemplate):
             return
         self.timer_count = 0
 
+        # 这里理论上应该能过滤重复订单
         if self.vt_orderid:
             self.cancel_all()
+        # if self.working:
+        #     # 先撤销之前的委托
+        #     self.cancel_all()
+        #     return
 
         '''
         ############################################################
@@ -148,66 +155,129 @@ class GridAlgo(AlgoTemplate):
             target_sell_distance) * self.step_volume
         target_sell_volume = abs(self.pos) - target_sell_position
 
-        if(self.pos == 0):
-            # 多开，空开
-            if target_buy_volume > 0:
-                self.vt_orderid = self.buy(
-                    self.vt_symbol,
-                    self.last_tick.ask_price_1,
-                    min(target_buy_volume, self.last_tick.ask_volume_1)
-                )
-            # Sell when price rising
-            elif target_sell_volume > 0:
-                self.vt_orderid = self.short(
-                    self.vt_symbol,
-                    self.last_tick.bid_price_1,
-                    min(target_sell_volume, self.last_tick.bid_volume_1)
-                )
-        elif(self.pos > 0):
-            # 多开，空平
-            if target_buy_volume > 0:
-                self.vt_orderid = self.buy(
-                    self.vt_symbol,
-                    self.last_tick.ask_price_1,
-                    min(target_buy_volume, self.last_tick.ask_volume_1)
-                )
-            # Sell when price rising
-            elif target_sell_volume > 0:
-                self.vt_orderid = self.sell(
-                    self.vt_symbol,
-                    self.last_tick.bid_price_1,
-                    min(target_sell_volume, self.last_tick.bid_volume_1)
-                )
-        elif(self.pos < 0):
-            # 多平，空开
-            if target_buy_volume > 0:
+
+        # 这里要再修改下，应该是对多出来的仓位进行平仓，其余的还是要开仓的
+        # 有bug，每次下单都会翻倍，下单速度太快，导致self.pos不会更新，要通过仓位直接更新self.pos
+        # 如果target_volume有仓位，要先拆再开
+        if target_buy_volume > 0:
+            if self.pos < 0:
+                if target_buy_volume < abs(self.pos):
+                    # 若买入量小于空头持仓，则直接平空买入量
+                    self.vt_orderid = self.cover(
+                        self.vt_symbol,
+                        self.last_tick.ask_price_1,
+                        min(target_buy_volume, self.last_tick.ask_volume_1)
+                    )
+                else:
+                    # 否则先平所有的空头仓位，再开多头仓位
+                    self.vt_orderid = self.cover(
+                        self.vt_symbol,
+                        self.last_tick.ask_price_1,
+                        min(abs(self.pos), self.last_tick.ask_volume_1)
+                    )
+            # 若没有空头持仓，则执行开仓操作
+            else:
                 self.vt_orderid = self.cover(
                     self.vt_symbol,
                     self.last_tick.ask_price_1,
                     min(target_buy_volume, self.last_tick.ask_volume_1)
                 )
-            # Sell when price rising
-            elif target_sell_volume > 0:
+        # 卖出和以上相反
+        elif target_sell_volume > 0:
+            if self.pos > 0:
+                if target_sell_volume < abs(self.pos):
+                    self.vt_orderid = self.sell(
+                        self.vt_symbol,
+                        self.last_tick.ask_price_1,
+                        min(target_buy_volume, self.last_tick.ask_volume_1)
+                    )
+                else:
+                    self.vt_orderid = self.sell(
+                        self.vt_symbol,
+                        self.last_tick.ask_price_1,
+                        min(abs(self.pos), self.last_tick.ask_volume_1)
+                    )
+            else:
                 self.vt_orderid = self.short(
                     self.vt_symbol,
-                    self.last_tick.bid_price_1,
-                    min(target_sell_volume, self.last_tick.bid_volume_1)
+                    self.last_tick.ask_price_1,
+                    min(target_buy_volume, self.last_tick.ask_volume_1)
                 )
+
+
+        # if(self.pos == 0):
+        #     # 多开，空开
+        #     if target_buy_volume > 0:
+        #         self.vt_orderid = self.buy(
+        #             self.vt_symbol,
+        #             self.last_tick.ask_price_1,
+        #             min(target_buy_volume, self.last_tick.ask_volume_1)
+        #         )
+        #     # Sell when price rising
+        #     elif target_sell_volume > 0:
+        #         self.vt_orderid = self.short(
+        #             self.vt_symbol,
+        #             self.last_tick.bid_price_1,
+        #             min(target_sell_volume, self.last_tick.bid_volume_1)
+        #         )
+        # elif(self.pos > 0):
+        #     # 多开，空平
+        #     if target_buy_volume > 0:
+        #         self.vt_orderid = self.buy(
+        #             self.vt_symbol,
+        #             self.last_tick.ask_price_1,
+        #             min(target_buy_volume, self.last_tick.ask_volume_1)
+        #         )
+        #     # Sell when price rising
+        #     elif target_sell_volume > 0:
+        #         self.vt_orderid = self.sell(
+        #             self.vt_symbol,
+        #             self.last_tick.bid_price_1,
+        #             min(target_sell_volume, self.last_tick.bid_volume_1)
+        #         )
+        # elif(self.pos < 0):
+        #     # 多平，空开
+        #     if target_buy_volume > 0:
+        #         self.vt_orderid = self.cover(
+        #             self.vt_symbol,
+        #             self.last_tick.ask_price_1,
+        #             min(target_buy_volume, self.last_tick.ask_volume_1)
+        #         )
+        #     # Sell when price rising
+        #     elif target_sell_volume > 0:
+        #         self.vt_orderid = self.short(
+        #             self.vt_symbol,
+        #             self.last_tick.bid_price_1,
+        #             min(target_sell_volume, self.last_tick.bid_volume_1)
+        #         )
+
+        # 更新pos
+        # self.pos = self.get_position(self.vt_symbol).long_pos - self.get_position(self.vt_symbol).short_pos
+        print(self.vt_orderid)
+        print(self.pos, target_sell_position, target_buy_position)
+        print(target_buy_volume, target_sell_volume)
 
         # Update UI
         self.put_variables_event()
 
     def on_order(self, order: OrderData):
         """"""
-        if not order.is_active():
+        """收到委托推送"""
+        if order.status in self.STATUS_FINISHED:
+            if order.direction == Direction.LONG:
+                self.pos += order.traded
+                print('>>>', order.vt_symbol, ': <TRADED>', order.traded)
+            else:
+                self.pos -= order.traded
+                print('>>>', order.vt_symbol, ': <TRADED>', -order.traded)
             self.vt_orderid = ""
             self.put_variables_event()
 
     def on_trade(self, trade: TradeData):
         """"""
-        if trade.direction == Direction.LONG:
-            self.pos += trade.volume
-        else:
-            self.pos -= trade.volume
+        # if trade.direction == Direction.LONG:
+        #     self.pos += trade.volume
+        # else:
+        #     self.pos -= trade.volume
 
         self.put_variables_event()
