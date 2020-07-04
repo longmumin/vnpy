@@ -1,4 +1,8 @@
 """
+作者：张峻铭
+存在问题：
+1、标的盈亏更新的比较慢，看看是不是定时的问题
+2、资金余额，盈亏和融航客户端有差异
 """
 import pytz
 from datetime import datetime

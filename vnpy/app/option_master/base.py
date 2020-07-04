@@ -117,7 +117,7 @@ class OptionData(InstrumentData):
         作者：张峻铭
         修改：
         1、这里option_strike为tuple，是个元组，原数据格式可能是datetime，这里提取数据
-        1、这里option_type为tuple，是个元组，取出原数据
+        2、这里option_type为tuple，是个元组，取出原数据
         ####################################################################
         '''
         self.strike_price: float = contract.option_strike[0]
@@ -230,7 +230,6 @@ class OptionData(InstrumentData):
             self.option_type
         )
 
-        #  这里size的单位是什么，怎么搞了个cash出来？？？
         self.cash_delta = delta * self.size
         self.cash_gamma = gamma * self.size
         self.cash_theta = theta * self.size

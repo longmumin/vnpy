@@ -106,7 +106,13 @@ class OptionManager(QtWidgets.QWidget):
         self.update_portfolio_combo()
 
     def update_portfolio_combo(self) -> None:
-        """"""
+        '''
+        ####################################################################
+        作者：张峻铭
+        修改：
+        1、这里对 portfolio_combo 目前的状态进行判定，可以改造为添加
+        ####################################################################
+        '''
         if not self.portfolio_combo.isEnabled():
             return
 

@@ -1,5 +1,15 @@
 """"""
 
+'''
+####################################################################################
+作者：张峻铭
+待修改：
+1、每次只能开一个品种的对冲，改造方向为可以设计template，类似于cta template，开多个品种的模板
+2、看看定价是什么含义
+3、波动率管理是什么
+####################################################################################
+'''
+
 from typing import Dict, List, Set
 from copy import copy
 from collections import defaultdict
@@ -460,6 +470,7 @@ class OptionHedgeEngine:
         delta_to_hedge = self.delta_target - portfolio.pos_delta
         instrument = self.option_engine.get_instrument(self.vt_symbol)
         # 查询含义，这里的 instrument.cash_delta 是什么
+        print('instrument.cash_delta: %s' % instrument.cash_delta)
         hedge_volume = delta_to_hedge / instrument.cash_delta
 
         # Send hedge orders
@@ -469,6 +480,7 @@ class OptionHedgeEngine:
 
         if hedge_volume > 0:
             # 查询含义，看一下这里的pricetick是什么
+            print('contract.pricetick: %s' % contract.pricetick)
             price = tick.ask_price_1 + contract.pricetick * self.hedge_payup
             direction = Direction.LONG
 

@@ -6,12 +6,13 @@ import math
 
 
 '''
-############################################################
+#######################################################################
 作者：张峻铭
 新增：需要引入数据库机制，存储实时变化的pos，存储对应标的的设置，持仓等信息
 1、引入数据库
 2、引入持仓参数
-############################################################
+3、加入上限价格（stop_max_price）、下限价格（stop_min_price），设置网格的止损线
+#######################################################################
 '''
 
 class GridAlgo(AlgoTemplate):
@@ -24,6 +25,8 @@ class GridAlgo(AlgoTemplate):
         "price": 0.0,
         "step_price": 0.0,
         "step_volume": 0,
+        "stop_max_price": 0,
+        "stop_min_price": 0,
         "interval": 10,
     }
 
@@ -49,6 +52,8 @@ class GridAlgo(AlgoTemplate):
         self.price = setting["price"]
         self.step_price = setting["step_price"]
         self.step_volume = setting["step_volume"]
+        self.stop_max_price = setting["stop_max_price"]
+        self.stop_min_price = setting["stop_min_price"]
         self.interval = setting["interval"]
 
         # Variables
@@ -67,7 +72,8 @@ class GridAlgo(AlgoTemplate):
         # print(self.get_position(self.vt_symbol).long_pos)
         #########################################################################
         '''
-        self.pos = self.get_position(self.vt_symbol).long_pos - self.get_position(self.vt_symbol).short_pos
+        self.pos = 0
+        self.available_pos = self.get_position(self.vt_symbol).long_pos - self.get_position(self.vt_symbol).short_pos
         self.last_tick = None
 
         self.subscribe(self.vt_symbol)
@@ -141,27 +147,38 @@ class GridAlgo(AlgoTemplate):
             )
         ############################################################
         '''
+
+        '''
+        #######################################################################
+        作者：张峻铭
+        新增：如果价格超过止损线，直接返回
+        #######################################################################
+        '''
+        if self.last_tick.ask_price_1 > self.stop_max_price or self.last_tick.bid_price_1 < self.stop_min_price:
+            print('>>>:' + self.vt_symbol +': <Price Limit, Grid Stop>')
+            return
+
         # Calculate target volume to buy and sell
         target_buy_distance = (
             self.price - self.last_tick.ask_price_1) / self.step_price
         target_buy_position = math.floor(
             target_buy_distance) * self.step_volume
-        target_buy_volume = target_buy_position - abs(self.pos)
+        target_buy_volume = target_buy_position - self.pos
 
         # Calculate target volume to sell
         target_sell_distance = (
             self.price - self.last_tick.bid_price_1) / self.step_price
         target_sell_position = math.ceil(
             target_sell_distance) * self.step_volume
-        target_sell_volume = abs(self.pos) - target_sell_position
+        target_sell_volume = self.pos - target_sell_position
 
 
         # 这里要再修改下，应该是对多出来的仓位进行平仓，其余的还是要开仓的
         # 有bug，每次下单都会翻倍，下单速度太快，导致self.pos不会更新，要通过仓位直接更新self.pos
         # 如果target_volume有仓位，要先拆再开
         if target_buy_volume > 0:
-            if self.pos < 0:
-                if target_buy_volume < abs(self.pos):
+            if self.available_pos < 0:
+                if target_buy_volume < abs(self.available_pos):
                     # 若买入量小于空头持仓，则直接平空买入量
                     self.vt_orderid = self.cover(
                         self.vt_symbol,
@@ -173,35 +190,35 @@ class GridAlgo(AlgoTemplate):
                     self.vt_orderid = self.cover(
                         self.vt_symbol,
                         self.last_tick.ask_price_1,
-                        min(abs(self.pos), self.last_tick.ask_volume_1)
+                        min(abs(self.available_pos), self.last_tick.ask_volume_1)
                     )
             # 若没有空头持仓，则执行开仓操作
             else:
-                self.vt_orderid = self.cover(
+                self.vt_orderid = self.buy(
                     self.vt_symbol,
                     self.last_tick.ask_price_1,
                     min(target_buy_volume, self.last_tick.ask_volume_1)
                 )
         # 卖出和以上相反
         elif target_sell_volume > 0:
-            if self.pos > 0:
-                if target_sell_volume < abs(self.pos):
+            if self.available_pos > 0:
+                if target_sell_volume < abs(self.available_pos):
                     self.vt_orderid = self.sell(
                         self.vt_symbol,
                         self.last_tick.ask_price_1,
-                        min(target_buy_volume, self.last_tick.ask_volume_1)
+                        min(target_sell_volume, self.last_tick.bid_volume_1)
                     )
                 else:
                     self.vt_orderid = self.sell(
                         self.vt_symbol,
                         self.last_tick.ask_price_1,
-                        min(abs(self.pos), self.last_tick.ask_volume_1)
+                        min(abs(self.available_pos), self.last_tick.bid_volume_1)
                     )
             else:
                 self.vt_orderid = self.short(
                     self.vt_symbol,
                     self.last_tick.ask_price_1,
-                    min(target_buy_volume, self.last_tick.ask_volume_1)
+                    min(target_sell_volume, self.last_tick.bid_volume_1)
                 )
 
 
@@ -251,11 +268,9 @@ class GridAlgo(AlgoTemplate):
         #             min(target_sell_volume, self.last_tick.bid_volume_1)
         #         )
 
-        # 更新pos
-        # self.pos = self.get_position(self.vt_symbol).long_pos - self.get_position(self.vt_symbol).short_pos
-        print(self.vt_orderid)
-        print(self.pos, target_sell_position, target_buy_position)
-        print(target_buy_volume, target_sell_volume)
+        # print(self.vt_orderid)
+        # print(self.pos, target_sell_position, target_buy_position)
+        # print(target_buy_volume, target_sell_volume)
 
         # Update UI
         self.put_variables_event()
@@ -266,9 +281,11 @@ class GridAlgo(AlgoTemplate):
         if order.status in self.STATUS_FINISHED:
             if order.direction == Direction.LONG:
                 self.pos += order.traded
+                self.available_pos += order.traded
                 print('>>>', order.vt_symbol, ': <TRADED>', order.traded)
             else:
                 self.pos -= order.traded
+                self.available_pos -= order.traded
                 print('>>>', order.vt_symbol, ': <TRADED>', -order.traded)
             self.vt_orderid = ""
             self.put_variables_event()
