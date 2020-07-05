@@ -127,6 +127,13 @@ class MainWindow(QtWidgets.QMainWindow):
         action.triggered.connect(self.edit_global_setting)
         bar.addAction(action)
 
+        '''
+        #########################################################################
+        作者：张峻铭
+        修改：以下 帮助、查询合约、代码编辑、还原窗口、测试邮件、关于论坛  等功能注释掉
+        #########################################################################
+        '''
+        '''
         # Help menu
         help_menu = bar.addMenu("帮助")
 
@@ -175,6 +182,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "about.ico",
             partial(self.open_widget, AboutDialog, "about"),
         )
+    '''
 
     def init_toolbar(self) -> None:
         """"""

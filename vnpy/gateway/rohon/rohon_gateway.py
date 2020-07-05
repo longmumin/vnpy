@@ -123,7 +123,7 @@ symbol_exchange_map = {}
 symbol_name_map = {}
 symbol_size_map = {}
 
-f = open("out.txt", "w")
+# f = open("out.txt", "w")
 
 class RohonGateway(BaseGateway):
     """
