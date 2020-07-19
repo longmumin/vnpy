@@ -2,10 +2,11 @@
 from vnpy.event import EventEngine, Event
 from vnpy.trader.engine import BaseEngine, MainEngine
 from vnpy.trader.event import (
-    EVENT_TICK, EVENT_TIMER, EVENT_ORDER, EVENT_TRADE)
+    EVENT_TICK, EVENT_TIMER, EVENT_ORDER, EVENT_TRADE, EVENT_POSITION)
 from vnpy.trader.constant import (Direction, Offset, OrderType)
 from vnpy.trader.object import (SubscribeRequest, OrderRequest, LogData)
 from vnpy.trader.utility import load_json, save_json, round_to
+from vnpy.trader.converter import OffsetConverter
 
 from .template import AlgoTemplate
 
@@ -18,9 +19,22 @@ EVENT_ALGO_VARIABLES = "eAlgoVariables"
 EVENT_ALGO_PARAMETERS = "eAlgoParameters"
 
 
+'''
+###########################################################################
+作者：张峻铭
+新增：加入算法标的，持仓等的配置，存储，同步等功能
+1.8.0版本vnpy是用db实现的，2.0版本变为json文件，这里选择与目前的版本一致
+修改：
+1、加入data_filename变量，指向数据文件 algo_strategy_data.json
+2、加入函数load_strategy_data、sync_strategy_data加载和同步algo的数据
+3、加入process_position_event、OffsetConverter函数、EVENT_POSITION事件，用于获取持仓
+###########################################################################
+'''
+
 class AlgoEngine(BaseEngine):
     """"""
     setting_filename = "algo_trading_setting.json"
+    data_filename = "algo_strategy_data.json"
 
     def __init__(self, main_engine: MainEngine, event_engine: EventEngine):
         """Constructor"""
@@ -35,6 +49,8 @@ class AlgoEngine(BaseEngine):
 
         self.load_algo_template()
         self.register_event()
+
+        self.offset_converter = OffsetConverter(self.main_engine)
 
     def init_engine(self):
         """"""
@@ -52,14 +68,14 @@ class AlgoEngine(BaseEngine):
         from .algos.dma_algo import DmaAlgo
         from .algos.arbitrage_algo import ArbitrageAlgo
 
-        self.add_algo_template(TwapAlgo)
-        self.add_algo_template(IcebergAlgo)
-        self.add_algo_template(SniperAlgo)
-        self.add_algo_template(StopAlgo)
-        self.add_algo_template(BestLimitAlgo)
+        # self.add_algo_template(TwapAlgo)
+        # self.add_algo_template(IcebergAlgo)
+        # self.add_algo_template(SniperAlgo)
+        # self.add_algo_template(StopAlgo)
+        # self.add_algo_template(BestLimitAlgo)
         self.add_algo_template(GridAlgo)
-        self.add_algo_template(DmaAlgo)
-        self.add_algo_template(ArbitrageAlgo)
+        # self.add_algo_template(DmaAlgo)
+        # self.add_algo_template(ArbitrageAlgo)
 
     def add_algo_template(self, template: AlgoTemplate):
         """"""
@@ -78,12 +94,41 @@ class AlgoEngine(BaseEngine):
         """"""
         save_json(self.setting_filename, self.algo_settings)
 
+    '''
+    ############################################################
+    作者：张峻铭
+    新增：加入算法标的，持仓等的配置，存储，同步等功能
+    1.8.0版本vnpy是用db实现的，2.0版本变为json文件，这里选择与目前的版本一致
+    修改：
+    1、加入data_filename变量，指向数据文件 algo_strategy_data.json
+    ############################################################
+    '''
+    # def load_strategy_data(self):
+    #     """
+    #     Load strategy data from json file.
+    #     """
+    #     self.strategy_data = load_json(self.data_filename)
+    #
+    # def sync_strategy_data(self, template: AlgoTemplate):
+    #     """
+    #     Sync strategy data into json file.
+    #     """
+    #     data = template.get_variables()
+    #     data.pop("inited")      # Strategy status (inited, trading) should not be synced.
+    #     data.pop("trading")
+    #
+    #     self.strategy_data[strategy.strategy_name] = data
+    #     save_json(self.data_filename, self.strategy_data)
+
+
+
     def register_event(self):
         """"""
         self.event_engine.register(EVENT_TICK, self.process_tick_event)
         self.event_engine.register(EVENT_TIMER, self.process_timer_event)
         self.event_engine.register(EVENT_ORDER, self.process_order_event)
         self.event_engine.register(EVENT_TRADE, self.process_trade_event)
+        self.event_engine.register(EVENT_POSITION, self.process_position_event)
 
     def process_tick_event(self, event: Event):
         """"""
@@ -117,6 +162,12 @@ class AlgoEngine(BaseEngine):
         algo = self.orderid_algo_map.get(order.vt_orderid, None)
         if algo:
             algo.update_order(order)
+
+    def process_position_event(self, event: Event):
+        """"""
+        position = event.data
+
+        self.offset_converter.update_position(position)
 
     def start_algo(self, setting: dict):
         """"""
@@ -167,7 +218,8 @@ class AlgoEngine(BaseEngine):
         price: float,
         volume: float,
         order_type: OrderType,
-        offset: Offset
+        offset: Offset,
+        lock
     ):
         """"""
         contract = self.main_engine.get_contract(vt_symbol)
@@ -188,7 +240,16 @@ class AlgoEngine(BaseEngine):
             price=price,
             offset=offset
         )
-        vt_orderid = self.main_engine.send_order(req, contract.gateway_name)
+        '''
+        ############################################################
+        作者：张峻铭
+        修改：将req转换为包含锁仓模式和上期所规则的模式
+        ############################################################
+        '''
+        # Convert with offset converter
+        req_list = self.offset_converter.convert_order_request(req, lock)
+        for req in req_list:
+            vt_orderid = self.main_engine.send_order(req, contract.gateway_name)
 
         self.orderid_algo_map[vt_orderid] = algo
         return vt_orderid
@@ -221,6 +282,13 @@ class AlgoEngine(BaseEngine):
             self.write_log(f"查询合约失败，找不到合约：{vt_symbol}", algo)
 
         return contract
+
+    def get_position(self, algo: AlgoTemplate, vt_symbol: str):
+        pos = self.offset_converter.get_position_holding(vt_symbol)
+
+        if not pos:
+            self.write_log(f"查询合约持仓失败，合约持仓：{vt_symbol}", algo)
+        return pos
 
     def write_log(self, msg: str, algo: AlgoTemplate = None):
         """"""

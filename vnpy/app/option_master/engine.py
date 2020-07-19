@@ -1,8 +1,19 @@
 """"""
 
+'''
+####################################################################################
+作者：张峻铭
+待修改：
+1、每次只能开一个品种的对冲，改造方向为可以设计template，类似于cta template，开多个品种的模板
+2、看看定价是什么含义
+3、波动率管理是什么
+####################################################################################
+'''
+
 from typing import Dict, List, Set
 from copy import copy
 from collections import defaultdict
+import re
 
 from vnpy.trader.object import (
     LogData, ContractData, TickData,
@@ -194,15 +205,33 @@ class OptionEngine(BaseEngine):
 
     def process_contract_event(self, event: Event) -> None:
         """"""
+        '''
+        ################################################################################
+        作者：张峻铭
+        新增：这里通过Ronhon接口，无法获得option_portfolio字段，导致无法添加
+        期权合约，需要修改
+        1、这里的portfolio_name字段对于后续处理较为重要，所以还是要想办法按规则生成
+        2、这里用行权价当做chain_index，因为后面对于call和put，都需要chain检索
+        ################################################################################
+        '''
+
         contract: ContractData = event.data
 
         if contract.product == Product.OPTION:
             exchange_name = contract.exchange.value
-            portfolio_name = f"{contract.option_portfolio}.{exchange_name}"
+
+            # 在这里组装portfolio_name  contract.option_unerlying
+            symbol = ''.join(re.split(r'[^A-Za-z]', contract.option_underlying[0]))
+            # 大商所和上期所要在symbol后面跟o
+            if(exchange_name == 'DCE' or exchange_name == 'SHFE'):
+                symbol = f"{symbol}_o"
+            portfolio_name = f"{symbol}.{exchange_name}"
             if portfolio_name not in CHAIN_UNDERLYING_MAP:
                 return
 
             portfolio = self.get_portfolio(portfolio_name)
+            # 这里用行权价当做chain_index
+            contract.option_index = str(int(contract.option_strike[0]))
             portfolio.add_option(contract)
 
     def process_position_event(self, event: Event) -> None:
@@ -440,6 +469,8 @@ class OptionHedgeEngine:
         # Calculate volume of contract to hedge
         delta_to_hedge = self.delta_target - portfolio.pos_delta
         instrument = self.option_engine.get_instrument(self.vt_symbol)
+        # 查询含义，这里的 instrument.cash_delta 是什么
+        print('instrument.cash_delta: %s' % instrument.cash_delta)
         hedge_volume = delta_to_hedge / instrument.cash_delta
 
         # Send hedge orders
@@ -452,6 +483,8 @@ class OptionHedgeEngine:
             return
 
         if hedge_volume > 0:
+            # 查询含义，看一下这里的pricetick是什么
+            print('contract.pricetick: %s' % contract.pricetick)
             price = tick.ask_price_1 + contract.pricetick * self.hedge_payup
             direction = Direction.LONG
 
@@ -512,6 +545,13 @@ class OptionHedgeEngine:
 
     def cancel_all(self) -> None:
         """"""
+        '''
+        ########################################################################
+        作者：张峻铭
+        修改：rohon下单后，回报较慢，撤单可能会引起报错，这里需要修改，但是怎么改还没想好
+        cancel_order的时候会报错
+        ########################################################################
+        '''
         for vt_orderid in self.active_orderids:
             order: OrderData = self.main_engine.get_order(vt_orderid)
             req = order.create_cancel_request()

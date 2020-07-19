@@ -112,18 +112,33 @@ class OptionData(InstrumentData):
         super().__init__(contract)
 
         # Option contract features
-        self.strike_price: float = contract.option_strike
+        '''
+        ####################################################################
+        作者：张峻铭
+        修改：
+        1、这里option_strike为tuple，是个元组，原数据格式可能是datetime，这里提取数据
+        2、这里option_type为tuple，是个元组，取出原数据
+        ####################################################################
+        '''
+        self.strike_price: float = contract.option_strike[0]
         self.chain_index: str = contract.option_index
 
         self.option_type: int = 0
-        if contract.option_type == OptionType.CALL:
+        if contract.option_type[0] == OptionType.CALL:
             self.option_type = 1
         else:
             self.option_type = -1
 
         self.option_expiry: datetime = contract.option_expiry
+        """"""
+        '''
+        ####################################################################
+        作者：张峻铭
+        修改：这里option_expiry为tuple，是个元组，原数据格式可能是datetime，这里提取数据
+        ####################################################################
+        '''
         self.days_to_expiry: int = calculate_days_to_expiry(
-            contract.option_expiry
+            contract.option_expiry[0]
         )
         self.time_to_expiry: float = self.days_to_expiry / ANNUAL_DAYS
 

@@ -458,6 +458,16 @@ class ElectronicEyeMonitor(QtWidgets.QTableWidget):
 
     def process_trade_event(self, event: Event) -> None:
         """"""
+        '''
+        ####################################################################################
+        作者：张峻铭
+        修改：
+        1、这里需要修改，凡是交易的数据都会过来，需要用对冲的标的进行过滤
+        
+        看一下哪里能取到期权的标的，比对交易数据过滤一下就行了
+        顺便看下event.data是个什么数据类型
+        ####################################################################################
+        '''
         trade: TradeData = event.data
         self.update_net_pos(trade.vt_symbol)
 

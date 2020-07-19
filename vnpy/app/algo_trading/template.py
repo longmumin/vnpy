@@ -1,3 +1,8 @@
+'''
+作者：张峻铭
+修改：1、加日志log
+'''
+
 from vnpy.trader.engine import BaseEngine
 from vnpy.trader.object import TickData, OrderData, TradeData
 from vnpy.trader.constant import OrderType, Offset, Direction
@@ -108,16 +113,25 @@ class AlgoTemplate:
         """"""
         self.algo_engine.subscribe(self, vt_symbol)
 
+    '''
+    ############################################################
+    作者：张峻铭
+    新增：这里的写法和CTA template里面的写法不一样，这里面没有考虑平仓
+    1、加入卖开，买平
+    2、注释 buy 买开， sell 卖平， short 卖开， cover买平
+    ############################################################
+    '''
     def buy(
         self,
         vt_symbol,
         price,
         volume,
         order_type: OrderType = OrderType.LIMIT,
-        offset: Offset = Offset.NONE
+        offset: Offset = Offset.OPEN,
+        lock: bool = False
     ):
         """"""
-        msg = f"委托买入{vt_symbol}：{volume}@{price}"
+        msg = f"委托买入开仓{vt_symbol}：{volume}@{price}"
         self.write_log(msg)
 
         return self.algo_engine.send_order(
@@ -127,7 +141,8 @@ class AlgoTemplate:
             price,
             volume,
             order_type,
-            offset
+            offset,
+            lock
         )
 
     def sell(
@@ -136,10 +151,11 @@ class AlgoTemplate:
         price,
         volume,
         order_type: OrderType = OrderType.LIMIT,
-        offset: Offset = Offset.NONE
+        offset: Offset = Offset.CLOSE,
+        lock: bool = False
     ):
         """"""
-        msg = f"委托卖出{vt_symbol}：{volume}@{price}"
+        msg = f"委托卖出平仓{vt_symbol}：{volume}@{price}"
         self.write_log(msg)
 
         return self.algo_engine.send_order(
@@ -149,7 +165,56 @@ class AlgoTemplate:
             price,
             volume,
             order_type,
-            offset
+            offset,
+            lock
+        )
+
+    def short(
+        self,
+        vt_symbol,
+        price,
+        volume,
+        order_type: OrderType = OrderType.LIMIT,
+        offset: Offset = Offset.OPEN,
+        lock: bool = False
+    ):
+        """"""
+        msg = f"委托卖出开仓{vt_symbol}：{volume}@{price}"
+        self.write_log(msg)
+
+        return self.algo_engine.send_order(
+            self,
+            vt_symbol,
+            Direction.SHORT,
+            price,
+            volume,
+            order_type,
+            offset,
+            lock
+        )
+
+    def cover(
+        self,
+        vt_symbol,
+        price,
+        volume,
+        order_type: OrderType = OrderType.LIMIT,
+        offset: Offset = Offset.CLOSE,
+        lock: bool = False
+    ):
+        """"""
+        msg = f"委托买入平仓{vt_symbol}：{volume}@{price}"
+        self.write_log(msg)
+
+        return self.algo_engine.send_order(
+            self,
+            vt_symbol,
+            Direction.LONG,
+            price,
+            volume,
+            order_type,
+            offset,
+            lock
         )
 
     def cancel_order(self, vt_orderid: str):
@@ -171,6 +236,10 @@ class AlgoTemplate:
     def get_contract(self, vt_symbol: str):
         """"""
         return self.algo_engine.get_contract(self, vt_symbol)
+
+    def get_position(self, vt_symbol: str):
+        """"""
+        return self.algo_engine.get_position(self, vt_symbol)
 
     def write_log(self, msg: str):
         """"""

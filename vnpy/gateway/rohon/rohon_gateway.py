@@ -1,4 +1,8 @@
 """
+作者：张峻铭
+存在问题：
+1、标的盈亏更新的比较慢，看看是不是定时的问题
+2、资金余额，盈亏和融航客户端有差异
 """
 import pytz
 from datetime import datetime
@@ -119,6 +123,7 @@ symbol_exchange_map = {}
 symbol_name_map = {}
 symbol_size_map = {}
 
+# f = open("out.txt", "w")
 
 class RohonGateway(BaseGateway):
     """
@@ -479,6 +484,7 @@ class RohonTdApi(TdApi):
 
     def onRspQryInvestorPosition(self, data: dict, error: dict, reqid: int, last: bool):
         """"""
+        # print(data)
         if not data:
             return
 
@@ -530,7 +536,9 @@ class RohonTdApi(TdApi):
             self.positions.clear()
 
     def onRspQryTradingAccount(self, data: dict, error: dict, reqid: int, last: bool):
-        """"""
+        '''
+        在不发送报单的情况下，不返回账户信息
+        '''
         if "AccountID" not in data:
             return
 
@@ -576,12 +584,24 @@ class RohonTdApi(TdApi):
         if last:
             self.gateway.write_log("合约信息查询成功")
 
+            '''
+            ########################################################################
+            作者：张峻铭
+            修改：原代码用for data in self.order_data 循环，因为数据类型的原因，会进入死循环
+            这里改为 for i in range()
+            源代码：
             for data in self.order_data:
+                print(data, file=f)
                 self.onRtnOrder(data)
             self.order_data.clear()
+            ########################################################################
+            '''
+            for i in range(0, len(self.order_data)):
+                self.onRtnOrder(self.order_data[i])
+            self.order_data.clear()
 
-            for data in self.trade_data:
-                self.onRtnTrade(data)
+            for i in range(0, len(self.trade_data)):
+                self.onRtnTrade(self.trade_data[i])
             self.trade_data.clear()
 
     def onRtnOrder(self, data: dict):
