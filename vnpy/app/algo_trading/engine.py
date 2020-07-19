@@ -68,14 +68,14 @@ class AlgoEngine(BaseEngine):
         from .algos.dma_algo import DmaAlgo
         from .algos.arbitrage_algo import ArbitrageAlgo
 
-        self.add_algo_template(TwapAlgo)
-        self.add_algo_template(IcebergAlgo)
-        self.add_algo_template(SniperAlgo)
-        self.add_algo_template(StopAlgo)
-        self.add_algo_template(BestLimitAlgo)
+        # self.add_algo_template(TwapAlgo)
+        # self.add_algo_template(IcebergAlgo)
+        # self.add_algo_template(SniperAlgo)
+        # self.add_algo_template(StopAlgo)
+        # self.add_algo_template(BestLimitAlgo)
         self.add_algo_template(GridAlgo)
-        self.add_algo_template(DmaAlgo)
-        self.add_algo_template(ArbitrageAlgo)
+        # self.add_algo_template(DmaAlgo)
+        # self.add_algo_template(ArbitrageAlgo)
 
     def add_algo_template(self, template: AlgoTemplate):
         """"""
@@ -218,7 +218,8 @@ class AlgoEngine(BaseEngine):
         price: float,
         volume: float,
         order_type: OrderType,
-        offset: Offset
+        offset: Offset,
+        lock
     ):
         """"""
         contract = self.main_engine.get_contract(vt_symbol)
@@ -239,7 +240,16 @@ class AlgoEngine(BaseEngine):
             price=price,
             offset=offset
         )
-        vt_orderid = self.main_engine.send_order(req, contract.gateway_name)
+        '''
+        ############################################################
+        作者：张峻铭
+        修改：将req转换为包含锁仓模式和上期所规则的模式
+        ############################################################
+        '''
+        # Convert with offset converter
+        req_list = self.offset_converter.convert_order_request(req, lock)
+        for req in req_list:
+            vt_orderid = self.main_engine.send_order(req, contract.gateway_name)
 
         self.orderid_algo_map[vt_orderid] = algo
         return vt_orderid
