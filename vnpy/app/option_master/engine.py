@@ -478,6 +478,10 @@ class OptionHedgeEngine:
         contract = self.main_engine.get_contract(self.vt_symbol)
         holding = self.option_engine.get_position_holding(self.vt_symbol)
 
+        # Check if hedge volume meets contract minimum trading volume
+        if abs(hedge_volume) < contract.min_volume:
+            return
+
         if hedge_volume > 0:
             # 查询含义，看一下这里的pricetick是什么
             print('contract.pricetick: %s' % contract.pricetick)

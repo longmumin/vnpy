@@ -36,6 +36,9 @@ from vnpy.trader.ui import MainWindow, create_qapp
 # from vnpy.gateway.uft import UftGateway
 # from vnpy.gateway.okexo import OkexoGateway
 # from vnpy.gateway.binancef import BinancefGateway
+
+# from vnpy.gateway.mt4 import Mt4Gateway
+from vnpy.gateway.mt5 import Mt5Gateway
 from vnpy.gateway.rohon import RohonGateway
 
 # from vnpy.app.cta_strategy import CtaStrategyApp
@@ -95,6 +98,8 @@ def main():
     # main_engine.add_gateway(DeribitGateway)
     # main_engine.add_gateway(OkexoGateway)
     # main_engine.add_gateway(BinancefGateway)
+    # main_engine.add_gateway(Mt4Gateway)
+    # main_engine.add_gateway(Mt5Gateway)
     main_engine.add_gateway(RohonGateway)
 
     # main_engine.add_app(CtaStrategyApp)
